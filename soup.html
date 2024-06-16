@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      font-size: 100%;
+      display: grid;
+      place-items: center;
+    }
+    .content {
+      border: 1px solid #f1f1f1;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .image-container {
+      position: relative;
+      /* height: fit-content; */
+      height: 332px;
+    }
+    .show-wrapper {
+      position: absolute;
+      right: 15px;
+      bottom: 10px;
+      width: 30px;
+      height: 30px;
+      background-color: white;
+      box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.1);
+      background-position: center;
+      background-repeat: no-repeat;
+      border-radius: 8px;
+      border: 1px solid green;
+    }
+    .show-wrapper {
+      background-image: url(./show.png);
+    }
+    .show .show-wrapper {
+      background-image: url(./hide.png);
+    }
+    .show-wrapper:hover {
+      transform: scale(1.02);
+    }
+    .type-wrapper {
+      position: absolute;
+      width: 90%;
+      left: 50%;
+      top: 10px;
+      transform: translateX(-50%);
+      padding: 5px 20px;
+      border: 1px solid green;
+      border-radius: 8px;
+      background-color: white;
+      z-index: 100;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+    .star {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background-image: url(./star.png);
+      background-repeat: no-repeat;
+      font-size: 0;
+      color: transparent;
+      font-weight: 800;
+      
+    }
+    .show .star {
+      font-size: 22px;
+      color: #F7E222;
+      text-shadow: #000 0px 0px 3px;
+      background-image: none;
+    }
+    .text {
+      display: none;
+    }
+    .password {
+      display: inline;
+    }
+    .show .password {
+      display: none;
+    }
+    .show .text {
+      display: inline;
+    }
+    .circle {
+      border: 1px solid red;
+      border-radius: 50%;
+      position: absolute;
+    }
+    .input-field {
+      position: absolute;
+      left: 15px;
+      bottom: 10px;
+      width: 75;
+    }
+    .input-field input {
+      padding: 5px 20px;
+      border: 1px solid green;
+      border-radius: 8px;
+      background-color: white;
+    }
+    .toast {
+      width: 300px;
+      position: absolute;
+      left: calc(50% - 150px);
+      top: 30%;
+      max-width: 300px;
+      border-radius: 8px;
+      background-color: red;
+      border: 2px solid white;
+      color: white;
+      padding: .5em 1em;
+      font-size: 0.8rem;
+      outline: transparent;
+      opacity: 0;
+      z-index: 99;
+      transition: all 60ms ease-in-out;
+    }
+    .unhide {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toast"></div>
+  <div class="content">
+    <div class="image-container" id="image-container">
+      <img src="./soup.jpeg" style="width: 300px;" id="image"/>
+      <div class="type-wrapper">
+        <input type="range" name="slider" id="slider" min="1" max="50" step="1" value="30" autocomplete="off">
+        <div id="count">1</div>
+      </div>
+      <div class="input-field">
+        <input type="password" id="pass" autocomplete="off" />
+      </div>
+      <div class="show-wrapper"></div>
+    </div>
+    
+  </div>
+  <script>
+    const container = document.getElementById('image-container');
+    const image = document.getElementById('image');
+    const button = document.querySelector('.show-wrapper');
+    const slider = document.getElementById('slider');
+    const count = document.getElementById('count');
+    const pass = document.getElementById('pass');
+    count.textContent = (slider.value).padStart(2, '0');
+    const containerW = container.getBoundingClientRect().width;
+    const containerH = container.getBoundingClientRect().height;
+    let slipperyStars;
+
+    const soupBoundaries = {
+      centerX: containerW * 0.45,
+      centerY: containerH * 0.503,
+      radius: containerW * 0.85 / 2
+    }
+
+
+    slider.addEventListener('input', (e) => {
+      const curValue = e.target.value;
+      count.textContent = curValue.padStart(2, '0');
+      deployStars(curValue);
+    });
+
+    container.addEventListener('dragover', dragOverHandler);
+
+    container.addEventListener('drop', dropHandler);
+
+    button.addEventListener('click', () => {
+      container.classList.toggle('show');
+      pass.setAttribute('type', (container.classList.contains('show')) ? 'text' : 'password');
+    });
+
+    deployStars(slider.value);
+
+    function dragOverHandler(e) {
+      e.preventDefault();
+    }
+
+    function dropHandler(e) {
+      const targetId = e.dataTransfer.getData('id');
+      const targetEl = document.getElementById(targetId);
+
+      if (e.target.id === 'pass') {
+        if (Math.random() < 0.3) {
+          showToast('Oups, your catch has slipped through your clumsy fingers!');
+        } else {
+          const targetSymbol = targetEl.textContent;
+          pass.value += targetSymbol;
+        }
+        targetEl.remove();
+        return;
+      }
+
+      const origX = e.dataTransfer.getData('offsetX');
+      const origY = e.dataTransfer.getData('offsetY');
+      const { left, top } = container.getBoundingClientRect();
+      const { width, height } = targetEl.getBoundingClientRect();
+      const { x, y } = findNearestPointInCircle(e.clientX - origX - left, e.clientY - origY - top, width, height);
+      targetEl.style.left = `${x}px`;
+      targetEl.style.top = `${y}px`;
+
+      e.preventDefault();
+    }
+
+    function finaliseDrop(e) {
+
+
+    }
+
+    function deployStars(amount) {
+      const allStars = document.querySelectorAll('.star');
+      for (const element of allStars) {
+        element.remove();
+      }
+
+      for (let i = 0; i < amount; i++) {
+        const newStar = document.createElement('div');
+        newStar.classList.add('star');
+        
+        const rotation = Math.round(Math.random() * 45);
+        const scale = 1 + Math.random() / 3;
+        const character = Math.round(Math.random() * 110 + 35);
+
+        const {x, y} = findNearestPointInCircle(Math.round(Math.random() * 245 + 17), Math.round(Math.random() * 217 + 60), 20 * scale, 20 * scale);
+
+        newStar.style.left = x + 'px';
+        newStar.style.top = y + 'px';
+
+        newStar.style.transform = 'rotate(' + rotation + 'deg)';
+        newStar.style.transform = 'scale(' + scale + ')';
+        newStar.innerHTML = `&#${character};`;
+        newStar.id = `star${i.toString().padStart(2, '0')}`;
+
+        newStar.setAttribute('draggable', 'true');
+        newStar.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData("id", newStar.id);
+          e.dataTransfer.setData("offsetX", e.offsetX);
+          e.dataTransfer.setData("offsetY", e.offsetY);
+        });
+
+        container.appendChild(newStar);
+      }
+    }
+
+    // function newStarCoords() {
+    //   const x = Math.round(Math.random() * (containerW - 80) + 40);
+    //   const y = Math.round(Math.random() * (containerW - 80) + 40);
+    //   return isPointInCircle(x, y) ? {x, y} : newStarCoords();
+    // }
+
+    // function isPointInCircle(pointX, pointY) {
+    //   const dx = pointX - soupBoundaries.centerX;
+    //   const dy = pointY - soupBoundaries.centerY;
+    //   const distanceSquared = dx * dx + dy * dy;
+    //   return distanceSquared <= Math.pow(soupBoundaries.radius, 2);
+    // }
+
+    function findNearestPointInCircle(pointX, pointY, width, height) {
+      // Calculate the vector from the circle's center to the point
+      const dx = pointX - soupBoundaries.centerX;
+      const dy = pointY - soupBoundaries.centerY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // If the point is inside the circle, return the point itself
+      if (distance <= soupBoundaries.radius) {
+          return { x: pointX, y: pointY };
+      }
+
+      // Normalize the vector
+      const normX = dx / distance;
+      const normY = dy / distance;
+
+      // Scale the vector to the circle's radius
+      const nearestX = soupBoundaries.centerX + normX * soupBoundaries.radius;
+      const nearestY = soupBoundaries.centerY + normY * soupBoundaries.radius;
+
+      return { x: nearestX - width / 2, y: nearestY - height / 2 };
+    }
+
+    function showToast(text) {
+      toast.classList.add('unhide');
+      toast.textContent = text;
+        setTimeout(() => {
+          toast.classList.remove('unhide');
+        }, 5000);
+    }
+  </script>
+</body>
+</html>
